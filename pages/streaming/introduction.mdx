@@ -1,0 +1,136 @@
+---
+title: 'Streaming API (Socket.IO)'
+description: 'Real-time price and position feeds over Socket.IO.'
+---
+
+# Streaming API (Socket.IO)
+
+**Documentation only.** Real-time feeds use **Socket.IO** over **WebSockets**, not the HTTP requests under `https://api.4cx.io` in the rest of this documentation.
+
+## Relationship to the REST API
+
+- Use [Log in](/pages/authentication/log-in) to obtain a session token for REST.
+- Published streaming docs use **`wss://api.4cx.io/wssproduction`**. Confirm with your team whether your 4cx product reuses this host and token, or different endpoints.
+
+## Recommended Socket.IO clients
+
+- JavaScript: [socket.io-client](https://github.com/socketio/socket.io-client)
+- Java: [socket.io-client-java](https://github.com/socketio/socket.io-client-java)
+- C++: [socket.io-client-cpp](https://github.com/socketio/socket.io-client-cpp)
+
+## Server
+
+```
+wss://api.4cx.io/wssproduction
+```
+
+## Authentication
+
+A valid REST **token** (from `/user/login`, see [Authentication](/pages/authentication/log-in)) is required. Pass it in the subscription **query** object as described below.
+
+## Public mode
+
+Node.js clients should send `extraHeaders: { 'X-API-Version': 'public' }` on the handshake. Browser clients should pass `query: { apiVersion: 'public' }` so payloads use sweepstakes field names (`risk`, `take`, `requestID`) instead of legacy names.
+
+## Subscriptions (channels)
+
+### `SUB /`
+
+Root channel subscription. **Query object:**
+
+- **`token`** (string, required) — auth token from the REST API.
+
+### `SUB /priceUpdates`
+
+Price feed. After subscribing, you receive messages of type **Order Update** or **Game Update** (see **Incoming messages**).
+
+### `SUB /v2/user/{username}`
+
+- **Path:** `username` = your 4Cx **username** (not email).
+- **Messages:** **Position Update** when your orders are placed, matched, or cancelled.
+
+## Incoming messages
+
+### 1. Order Update
+
+Emitted when a price changes in a single market (e.g. a new order on a line). Note: a future V2 may simplify updates to only the relevant order.
+
+**Payload fields include:** `gameID`, `type` (`moneyline` | `spread` | `total` | `moneyline1x2`), `sideOrders` (array), optional `spread`, `total`, `side`, `market`, and other properties.
+
+**Example:**
+
+```json
+{
+  "payload": {
+    "gameID": "62619dce25e2fb049a71cc2e",
+    "type": "total",
+    "OU": "under",
+    "total": 8.5,
+    "spread": null,
+    "sideOrders": [
+      {
+        "id": "62619e6a40e36d0494600f48",
+        "type": "total",
+        "createdBy": "603eb5d05eca45001243aedc",
+        "sumUntaken": 255,
+        "odds": 104,
+        "bet": 265.2,
+        "gameID": "62619dce25e2fb049a71cc2e",
+        "takenRatio": 0,
+        "participantID": null,
+        "total": 8.5,
+        "spread": null,
+        "OU": "under",
+        "followPinnacle": false,
+        "source": "4cx",
+        "level": 1,
+        "expiry": "2022-04-21T23:40:12.000Z",
+        "createdAt": "2022-04-21T18:11:54.614Z"
+      }
+    ]
+  }
+}
+```
+
+### 2. Game Update
+
+Emitted when a game is created, betting opens or closes, or the start time changes.
+
+**Payload** includes: `id`, `parentGameID`, `league`, `sport`, `start`, `ended`, `participants`, `awayMoneylines`, `homeMoneylines`, `awaySpreads`, `homeSpreads`, `over`, `under`, `mainHomeSpread`, `mainAwaySpread`, `mainTotal`, `messageType` (`marketOpen` | `marketClosed`), and other fields.
+
+A **full generated JSON example** is too large to duplicate here—ask your integration contact for a complete sample.
+
+### 3. Position Update
+
+Emitted when one of your orders is cancelled, matched, or placed.
+
+- **`matched`:** present when matched; includes `txID` (use REST matched-play lookup with the same `txID`), `filled`, `odds` (always in **your** odds; if you offered another user -105 you may see +105).
+- **`unmatched`:** `filled` (amount filled in this event, not cumulative across partials), `offered`, `remaining`, `orderID` (REST order lookup), `odds`. When `remaining` is 0 the order is fully matched; when `offered` is 0 the order was cancelled.
+- **Also:** `gameID`, `eventName`, `parentGameID`, `league`, `sport`, `origin` (`offer` | `wager`).
+
+**Example:**
+
+```json
+{
+  "payload": {
+    "matched": null,
+    "unmatched": {
+      "filled": 0,
+      "offered": 999,
+      "remaining": 999,
+      "orderID": "62619e6b40e36d0494600f67",
+      "odds": -105
+    },
+    "gameID": "603eb5d05eca45001243aedc",
+    "eventName": "PHILADELPHIA-76ERS-VS-MIAMI-HEAT",
+    "parentGameID": null,
+    "league": "NBA",
+    "sport": "basketball",
+    "origin": "offer"
+  }
+}
+```
+
+## REST cross-reference
+
+Use the [Orders](/pages/orders/place-order) and related HTTP pages in this documentation when your deployment exposes the same routes for order lookup and matched plays.

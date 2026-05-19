@@ -1,0 +1,34 @@
+---
+title: 'Getting started'
+description: 'Authentication, public-mode header, and base URL.'
+---
+
+# 4Cx API
+
+The 4Cx public API exposes the platform endpoints such as: markets, take plays, place offers, and read your positions in real time.
+
+## Authentication
+
+Send your auth token in the `Authorization` header. No `Bearer` prefix — the raw token only.
+
+```
+Authorization: <your-token>
+```
+
+## Public-mode header
+
+Every request in this collection includes `X-API-Version: public`. This header is required and tells the API to return sweepstakes field names (`risk`, `take`, `requestID`) instead of legacy field names.
+
+<Note>
+  After [Log in](/pages/authentication/log-in), copy `user.auth` from the response and send it as the `Authorization` header on all other requests, together with `X-API-Version: public`.
+</Note>
+
+## Base URL
+
+Production base URL:
+
+```
+https://api.4cx.io
+```
+
+All REST paths below are relative to this host.

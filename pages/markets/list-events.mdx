@@ -1,0 +1,34 @@
+---
+title: 'List events'
+description: 'Returns event names you can use to narrow the schedule.'
+---
+
+Returns event names you can use to narrow the schedule. Adjust `sport` to match your market.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/exchange/getEvents` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`, `Content-Type: application/json`
+
+<CodeGroup>
+```json Request
+{
+  "sport": "basketball"
+}
+```
+
+```json Response
+{
+  "data": {
+    "availableEvents": [
+      "all",
+      "Team A vs Team B",
+      "Sample Event Two"
+    ]
+  }
+}
+```
+</CodeGroup>

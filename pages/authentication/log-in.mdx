@@ -1,0 +1,36 @@
+---
+title: 'Log in'
+description: 'Exchange username and password for a session token.'
+---
+
+Exchange your username and password for a session token. Paste the returned `user.auth` value into your client before calling other requests. This call does not send an `Authorization` header.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/user/login` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Content-Type: application/json` only (no `Authorization`)
+
+<CodeGroup>
+```json Request
+{
+  "username": "sample_user",
+  "password": "REPLACE_WITH_PASSWORD"
+}
+```
+
+```json Response
+{
+  "data": {
+    "user": {
+      "username": "sample_user",
+      "auth": "sample_auth_token_replace_with_real_value"
+    }
+  }
+}
+```
+</CodeGroup>
+
+Use `data.user.auth` as the raw `Authorization` header value on subsequent requests (no `Bearer` prefix).

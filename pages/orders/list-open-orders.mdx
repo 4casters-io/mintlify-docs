@@ -1,0 +1,33 @@
+---
+title: 'List my open orders'
+description: 'Lists your unmatched open offers on the exchange.'
+---
+
+Lists your unmatched open offers on the exchange. This is the 4cx route used by the product for open-order state (there is no `/session/getOrdersByUser` route in core-api).
+
+## Request
+
+<Card>
+  **GET** `https://api.4cx.io/user/getOpenOffers` <Badge color="blue">GET</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`
+
+<CodeGroup>
+```json Response
+{
+  "data": {
+    "offers": [
+      {
+        "id": "ord_001",
+        "gameID": "evt_001",
+        "risk": 50,
+        "odds": -110,
+        "type": "moneyline",
+        "origin": "offer"
+      }
+    ]
+  }
+}
+```
+</CodeGroup>

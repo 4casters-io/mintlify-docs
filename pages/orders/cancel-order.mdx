@@ -1,0 +1,38 @@
+---
+title: 'Cancel order'
+description: 'Cancels a single open order you own.'
+---
+
+Cancels a single open order you own. Replace `sessionID` with the MongoDB id of your session row.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/session/cancel` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`, `Content-Type: application/json`
+
+<CodeGroup>
+```json Request
+{
+  "sessionID": "507f1f77bcf86cd799439011"
+}
+```
+
+```json Response
+{
+  "data": {
+    "success": true,
+    "sessionID": "507f1f77bcf86cd799439011",
+    "odds": -110,
+    "filled": 0,
+    "offered": 50,
+    "remaining": 50,
+    "gameID": "evt_001"
+  }
+}
+```
+</CodeGroup>
+
+See [Errors](/pages/errors) for common failure responses.

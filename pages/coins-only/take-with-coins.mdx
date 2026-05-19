@@ -1,0 +1,54 @@
+---
+title: 'Take with coins'
+description: 'Place a limit order to take resting liquidity in Gold Coins mode.'
+---
+
+To take in coins mode, you need to make sure your account is in **coins mode**.
+
+Same endpoint as posting an offer; your account must be in **coins** mode for coin-denominated flow. Uses `orderType` other than `post` so the matcher can fill against resting liquidity when available.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/session/v2/place` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`, `Content-Type: application/json`
+
+<CodeGroup>
+```json Request
+{
+  "orders": [
+    {
+      "orderType": "limit",
+      "gameID": "evt_001",
+      "type": "moneyline",
+      "odds": -105,
+      "risk": 25,
+      "side": "team_b"
+    }
+  ]
+}
+```
+
+```json Response
+{
+  "data": {
+    "createdSessions": [
+      {
+        "matched": [
+          {
+            "txID": "tx_001",
+            "filled": 25,
+            "odds": -105
+          }
+        ],
+        "unmatched": {}
+      }
+    ]
+  }
+}
+```
+</CodeGroup>
+
+Replace sample `gameID` and `side` with values from your environment. For resting offers in sweepstakes mode, see [Place order](/pages/orders/place-order).

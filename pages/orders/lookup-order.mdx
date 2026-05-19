@@ -1,0 +1,32 @@
+---
+title: 'Look up single order'
+description: 'Returns one order you own by session id.'
+---
+
+Returns one order you own. Replace `orderID` with your session id. Public responses rename amount fields to `risk` where applicable.
+
+## Request
+
+<Card>
+  **GET** `https://api.4cx.io/session/lookupOrder?orderID=507f1f77bcf86cd799439011` <Badge color="blue">GET</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`
+
+| Query | Description |
+| --- | --- |
+| `orderID` | Your session / order id |
+
+<CodeGroup>
+```json Response
+{
+  "data": {
+    "id": "507f1f77bcf86cd799439011",
+    "odds": -110,
+    "matchedRisk": "0.00",
+    "unmatchedRisk": "50.00",
+    "type": "moneyline"
+  }
+}
+```
+</CodeGroup>

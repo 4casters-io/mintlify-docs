@@ -1,0 +1,77 @@
+---
+title: 'Place order'
+description: 'Place resting offers or matched takes via /session/v2/place.'
+---
+
+## What you are doing
+
+This is the main **place** call: you send one or more **orders** to `/session/v2/place`. The sample body shows the usual case—**resting a new offer** on the board.
+
+## When `orderType` is `post`
+
+- Use `post` when you want your `risk` to **sit on the book** until another user matches you (or you cancel).
+- If you want to **immediately take** existing liquidity (coins flow), use [Take with coins](/pages/coins-only/take-with-coins) instead—same URL, different `orderType`.
+
+## Request body (field by field)
+
+| Field | Meaning |
+| --- | --- |
+| `orders` | Array; most integrations send **one** order object while testing. |
+| `orderType` | `post` = add resting liquidity (not an IOC sweep). |
+| `gameID` | The game/market id—must exist in the system. |
+| `type` | `moneyline`, `spread`, `total`, etc. |
+| `odds` | American odds from **your** perspective (e.g. `-110`). |
+| `risk` | Amount you risk on this offer. With `X-API-Version: public` the API expects this field name. |
+| `side` | Which side you back—valid values depend on the game; `team_a` is only a placeholder. |
+
+## Example response
+
+- `createdSessions` — one entry per submitted order.
+- `matched` — instant fills (usually empty for a pure `post`).
+- `unmatched` — what is still live: use `orderID` with **Cancel order** / **Look up single order**; `offered` / `remaining` show how much risk is still working.
+
+Replace sample ids and `side` with values from your environment before expecting a real fill.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/session/v2/place` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`, `Content-Type: application/json`
+
+<CodeGroup>
+```json Request
+{
+  "orders": [
+    {
+      "orderType": "post",
+      "gameID": "evt_001",
+      "type": "moneyline",
+      "odds": -110,
+      "risk": 50,
+      "side": "team_a"
+    }
+  ]
+}
+```
+
+```json Response
+{
+  "data": {
+    "createdSessions": [
+      {
+        "matched": [],
+        "unmatched": {
+          "filled": 0,
+          "offered": 50,
+          "remaining": 50,
+          "orderID": "ord_001",
+          "odds": -110
+        }
+      }
+    ]
+  }
+}
+```
+</CodeGroup>

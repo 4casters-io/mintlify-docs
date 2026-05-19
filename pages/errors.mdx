@@ -1,0 +1,32 @@
+---
+title: 'Errors'
+description: 'Example error responses for common API failures.'
+---
+
+# Example error responses
+
+Responses use sweepstakes-oriented wording. Shapes vary by endpoint.
+
+## Order size exceeds limit (403)
+
+```json
+{
+  "message": "Order size exceeds maximum limit of 1000.00"
+}
+```
+
+## Invalid order identifier (400)
+
+```json
+{
+  "message": "Invalid Order ID"
+}
+```
+
+## Not your order (403)
+
+```json
+{
+  "message": "Not your order: 507f1f77bcf86cd799439011"
+}
+```

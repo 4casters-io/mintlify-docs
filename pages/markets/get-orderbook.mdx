@@ -1,0 +1,35 @@
+---
+title: 'Get orderbook'
+description: 'Returns depth for the selected game.'
+---
+
+Replace `evt_001` with a real game id from your environment. Returns depth for the selected game.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/exchange/getOrderbook` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `X-API-Version: public`, `Content-Type: application/json`
+
+<CodeGroup>
+```json Request
+{
+  "gameID": "evt_001"
+}
+```
+
+```json Response
+{
+  "data": {
+    "game": {
+      "id": "evt_001",
+      "eventName": "Team A vs Team B",
+      "league": "NBA",
+      "sport": "basketball"
+    }
+  }
+}
+```
+</CodeGroup>
