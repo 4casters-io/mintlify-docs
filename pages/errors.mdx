@@ -5,13 +5,30 @@ description: 'Example error responses for common API failures.'
 
 # Example error responses
 
-Responses use sweepstakes-oriented wording. Shapes vary by endpoint.
+All errors return a JSON body with this envelope:
+
+```json
+{
+  "error": {
+    "message": "Human-readable explanation.",
+    "code": 400,
+    "details": { ... }   // present on some errors; see below
+  }
+}
+```
+
+`message` is intended for humans. `code` mirrors the HTTP status. When `details` is present, it includes structured fields you can branch on in code (e.g. `details.code = "RATE_LIMITED"`).
+
+Older endpoints may still return a bare `{ "message": "..." }` body; check `error.message` first and fall back to the top-level `message`.
 
 ## Order size exceeds limit (403)
 
 ```json
 {
-  "message": "Order size exceeds maximum limit of 1000.00"
+  "error": {
+    "message": "Order size exceeds maximum limit of 1000.00",
+    "code": 403
+  }
 }
 ```
 
@@ -19,7 +36,10 @@ Responses use sweepstakes-oriented wording. Shapes vary by endpoint.
 
 ```json
 {
-  "message": "Invalid Order ID"
+  "error": {
+    "message": "Invalid Order ID",
+    "code": 400
+  }
 }
 ```
 
@@ -27,6 +47,19 @@ Responses use sweepstakes-oriented wording. Shapes vary by endpoint.
 
 ```json
 {
-  "message": "Not your order: 507f1f77bcf86cd799439011"
+  "error": {
+    "message": "Not your order: 507f1f77bcf86cd799439011",
+    "code": 403
+  }
 }
 ```
+
+## Throttle and lockout errors (423, 429)
+
+Place and cancel endpoints can return one of three distinct throttle conditions, each with its own `details.code`:
+
+- `RATE_LIMITED` (429) — per-second per-user limit exceeded
+- `CANCEL_QUEUE_FULL` (429) — cancel pipeline backed up (rare)
+- `CANCEL_ALL_IN_PROGRESS` (423) — a `cancelAll` is currently running for your account; do **not** simply retry like a normal rate limit
+
+Full descriptions, examples, and a recommended retry pattern are on the [Rate limits](/pages/rate-limits) page.
