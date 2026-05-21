@@ -50,9 +50,10 @@
             ]
           },
           {
-            "group": "Errors",
+            "group": "Errors & Rate Limits",
             "pages": [
-              "pages/errors"
+              "pages/errors",
+              "pages/rate-limits"
             ]
           }
         ]

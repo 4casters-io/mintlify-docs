@@ -1,0 +1,186 @@
+---
+title: 'Rate limits'
+description: 'Per-user limits on the order placement and cancellation endpoints, with the error shapes you can program against.'
+---
+
+# Rate limits
+
+API requests to the order placement and cancellation endpoints are rate-limited per user. The goal is to keep the exchange responsive for everyone — including you when you need to cancel quickly.
+
+## At a glance
+
+| Endpoint | Burst | Sustained average | What happens when you exceed it |
+| --- | --- | --- | --- |
+| `POST /session/v2/place` | **25 requests** in any 5-second window | 5 / second | `429` with `details.code = "RATE_LIMITED"` |
+| `POST /session/editOrder` | **25 requests** in any 5-second window | 5 / second | `429` with `details.code = "RATE_LIMITED"` |
+| `POST /session/cancel` | **30 requests** in any 2-second window | 15 / second | `429` with `details.code = "RATE_LIMITED"` |
+| `POST /session/cancelMultiple` | **30 requests** in any 2-second window | 15 / second | `429` with `details.code = "RATE_LIMITED"` |
+| `POST /session/cancelByReference` | **30 requests** in any 2-second window | 15 / second | `429` with `details.code = "RATE_LIMITED"` |
+
+Buckets are sized to permit short bursts (seeding a market, cleaning up stale orders) while capping the sustained rate. If you exhaust the burst budget, requests are rejected until the window rolls over.
+
+Bulk endpoints (`cancelAllOrders`, `cancelAllOrdersForGame`, `cancelAllForLeague`) are **not** gated by the per-request rate limit — they batch internally. They are governed by the cancel-all behavior described [below](#cancel-all-behavior).
+
+`editOrder` is counted against the **place** bucket because it functionally posts a new order.
+
+### Cancelling many orders at once
+
+If you need to cancel a large set of orders, **use a bulk endpoint rather than looping individual `cancel` calls**:
+
+- `POST /session/cancelMultiple` — pass an array of `sessionID`s; one HTTP request, the server cancels them all (subject to internal rate limiting).
+- `POST /session/cancelAllOrdersForGame` — every open order on a specific game.
+- `POST /session/cancelAllOrders` — every open order on your account.
+
+Looping individual `cancel` calls will hit the burst budget fast and force unnecessary 429s on your client.
+
+## Response headers
+
+Every rate-limited response sets a standard `Retry-After` header (in seconds). Most retry-aware HTTP clients (`axios-retry`, `urllib3` retries, `tenacity`, etc.) will honor this automatically.
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 1
+```
+
+## Error response shape
+
+When you exceed a limit (or hit another throttle condition described below), the response body always has the same envelope:
+
+```json
+{
+  "error": {
+    "message": "Human-readable explanation of what happened.",
+    "code": 429,
+    "details": {
+      "code": "RATE_LIMITED",
+      "kind": "cancel",
+      "retryable": true,
+      "retryAfterSeconds": 1
+    }
+  }
+}
+```
+
+The fields under `details` are what you should branch on in code. The top-level `code` mirrors the HTTP status, and `message` is intended for humans.
+
+## Throttle error codes
+
+Three distinct conditions can throttle or block a request. They all share the same envelope but have different `details.code` values so you can handle each correctly.
+
+### `RATE_LIMITED` (HTTP 429)
+
+You exceeded the per-second bucket on a place or cancel endpoint. Slow down and retry.
+
+```json
+{
+  "error": {
+    "message": "Too many cancel requests. Retry in 2s.",
+    "code": 429,
+    "details": {
+      "code": "RATE_LIMITED",
+      "kind": "cancel",
+      "retryable": true,
+      "retryAfterSeconds": 2
+    }
+  }
+}
+```
+
+**What to do:** wait `retryAfterSeconds` and retry. If you hit this consistently, slow your request rate.
+
+### `CANCEL_QUEUE_FULL` (HTTP 429)
+
+A second-layer guard on the cancel pipeline. You're sending cancels faster than the system can drain them, even after the per-second rate limit. This is rare in normal use.
+
+```json
+{
+  "error": {
+    "message": "Cancel queue is full for your account. Slow down your requests or wait briefly before retrying.",
+    "code": 429,
+    "details": {
+      "code": "CANCEL_QUEUE_FULL",
+      "retryable": true,
+      "retryAfterSeconds": 2
+    }
+  }
+}
+```
+
+**What to do:** treat the same as `RATE_LIMITED` — wait and retry. If you hit this often, batch your cancels by using `cancelMultiple` or `cancelAllOrdersForGame` instead of looping individual `cancel` calls.
+
+### `CANCEL_ALL_IN_PROGRESS` (HTTP 423)
+
+A `cancelAll`-style operation is currently running for your account. Individual cancel requests are temporarily locked out so they don't race with the bulk operation.
+
+```json
+{
+  "error": {
+    "message": "A cancelAll is currently running for your account. If this order existed when you initiated cancelAll, it will be cancelled automatically — no retry needed. If you placed it after cancelAll started, wait a few seconds and retry.",
+    "code": 423,
+    "details": {
+      "code": "CANCEL_ALL_IN_PROGRESS",
+      "retryable": true,
+      "retryAfterSeconds": 10
+    }
+  }
+}
+```
+
+**What to do:**
+
+- If the order you tried to cancel **already existed** when you (or your bot) called `cancelAllOrders`, **no action needed** — the in-progress cancelAll will cancel it. You can drop the retry.
+- If the order was **placed after** cancelAll started, wait `retryAfterSeconds` and retry the individual cancel.
+
+This is the most important error to handle distinctly. Treating it like a generic rate-limit and exponentially backing off (or worse, repeatedly retrying the same order) is the most common source of self-inflicted cancel loops.
+
+## Cancel-all behavior
+
+When you call `POST /session/cancelAllOrders` (or `pauseOrders`):
+
+1. The system acquires a per-user lock and begins cancelling each of your open orders.
+2. While that bulk operation is in progress, individual cancel requests (`cancel`, `cancelMultiple`, `cancelByReference`) from your account return `423 CANCEL_ALL_IN_PROGRESS` — see above.
+3. The bulk operation drains at ~15 cancels/second, so a `cancelAll` over 150 orders takes roughly 10 seconds.
+4. When it completes, the lock is released and your individual cancel calls work normally.
+
+If you initiate a `cancelAll` and then need to ensure a specific order is gone, **wait** for the cancelAll to complete rather than retrying individual cancels — the cancelAll has already scoped that order for cancellation.
+
+## Recommended client pattern
+
+```javascript
+async function cancelWithRetry(sessionID, attempt = 0) {
+  const res = await fetch('https://api.4cx.io/session/cancel', {
+    method: 'POST',
+    headers: {
+      'Authorization': token,
+      'X-API-Version': 'public',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ sessionID }),
+  });
+
+  if (res.ok) return res.json();
+
+  const body = await res.json().catch(() => ({}));
+  const errorCode = body?.error?.details?.code;
+  const retryAfterMs = (body?.error?.details?.retryAfterSeconds ?? 1) * 1000;
+
+  switch (errorCode) {
+    case 'CANCEL_ALL_IN_PROGRESS':
+      // Your cancelAll will cancel this order — no retry needed.
+      return { absorbedByCancelAll: true };
+
+    case 'RATE_LIMITED':
+    case 'CANCEL_QUEUE_FULL':
+      if (attempt >= 5) throw new Error('Cancel retries exhausted');
+      await new Promise((r) => setTimeout(r, retryAfterMs));
+      return cancelWithRetry(sessionID, attempt + 1);
+
+    default:
+      throw new Error(body?.error?.message || `Cancel failed: ${res.status}`);
+  }
+}
+```
+
+## Privileged accounts
+
+Internal liquidity-providing accounts (e.g. our own market-maker bots) are exempt from the per-second rate limits described above. These exemptions exist for system integrity and are not generally available. If you have an integration that legitimately requires higher throughput, reach out to [hello@4cx.io](mailto:hello@4cx.io) or your contact on Discord.
