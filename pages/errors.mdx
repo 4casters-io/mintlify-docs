@@ -106,7 +106,7 @@ The request was well-formed and you're authorized, but the **state of the market
 
 Common triggers on `POST /session/v2/place`:
 
-- `"Bet Size exceeds quantity available, which is $X.XX"` — the resting offer you tried to take was partially or fully consumed by another taker before your request landed.
+- `"Order size exceeds quantity available, which is $X.XX"` — the resting offer you tried to take was partially or fully consumed by another taker before your request landed.
 - `"Odds have been edited"` — the maker edited their order between your read and your take.
 - `"Session is expired"` / `"Session is cancelled"` — the order you targeted is no longer takeable.
 - `"Game is past start time"` / `"Game has started"` / `"Game has been taken OTB or is graded"` — the market closed (or moved to in-play) between your read and your write.
@@ -116,7 +116,7 @@ Common triggers on `POST /session/v2/place`:
 ```json
 {
   "error": {
-    "message": "Bet Size exceeds quantity available, which is $42.50",
+    "message": "Order size exceeds quantity available, which is $42.50",
     "code": 409
   }
 }
