@@ -1,0 +1,64 @@
+---
+title: 'Switch player mode'
+description: 'Toggle your account between cash and coins (Gold Coins) mode.'
+---
+
+Each 4Cx account has a single active **player mode** at a time:
+
+- **`cash`** — orders settle against your cash balance and liability.
+- **`coins`** — orders settle in Gold Coins. See [Place coins orders](/pages/coins-only/place-coins-orders) for the full denomination rule.
+
+The current mode is returned as `data.user.playerMode` on [Log in](/pages/authentication/log-in) and on `/user/getMe`. Call this endpoint to flip it before placing an order in the other mode.
+
+<Note>
+  This setting is account-wide and persists across sessions. Switching modes does **not** cancel your existing open offers in the previous mode, but new orders will be placed against the newly selected mode.
+</Note>
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/user/updateCoinsOrCash` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `Content-Type: application/json`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `playerMode` | string | Must be exactly `"coins"` or `"cash"`. Any other value returns `400`. |
+
+<CodeGroup>
+```json Request
+{
+  "playerMode": "coins"
+}
+```
+
+```json Response
+{
+  "data": {
+    "success": true
+  }
+}
+```
+
+```bash cURL
+curl -X POST https://api.4cx.io/user/updateCoinsOrCash \
+  -H "Authorization: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"playerMode":"coins"}'
+```
+</CodeGroup>
+
+## Errors
+
+| Status | Message | Cause |
+| --- | --- | --- |
+| `400` | `Error! Invalid method of play` | `playerMode` was not `"coins"` or `"cash"`. |
+| `401` | `InvalidCredentials` | Missing or invalid `Authorization` token. |
+
+## Typical flow
+
+1. Log in and inspect `data.user.playerMode` from the response.
+2. If you want to take in coins and the user is in `cash`, `POST /user/updateCoinsOrCash` with `{ "playerMode": "coins" }`.
+3. Proceed to [Place order](/pages/orders/place-order). See [Place coins orders](/pages/coins-only/place-coins-orders) for the denomination rule.
+4. To return to cash trading, repeat with `{ "playerMode": "cash" }`.

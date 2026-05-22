@@ -1,6 +1,6 @@
 ---
 title: 'Getting started'
-description: 'Authentication, public-mode header, and base URL.'
+description: 'Authentication and base URL.'
 ---
 
 # 4Cx API
@@ -15,12 +15,8 @@ Send your auth token in the `Authorization` header. No `Bearer` prefix — the r
 Authorization: <your-token>
 ```
 
-## Public-mode header
-
-Every request in this collection includes `X-API-Version: public`. This header is required and tells the API to return sweepstakes field names (`risk`, `take`, `requestID`) instead of legacy field names.
-
 <Note>
-  After [Log in](/pages/authentication/log-in), copy `user.auth` from the response and send it as the `Authorization` header on all other requests, together with `X-API-Version: public`.
+  After [Log in](/pages/authentication/log-in), copy `user.auth` from the response and send it as the `Authorization` header on every subsequent request.
 </Note>
 
 ## Base URL

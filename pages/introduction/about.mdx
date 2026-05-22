@@ -15,6 +15,21 @@ Taking existing orders only is not expressly prohibited. However, API activity m
 
 **There are currently no additional fees to use the API**. All markets on 4Cx remain 0% commission on offers and takes. However, API access is not unlimited or unconditional. In the future, certain accounts or activity patterns may be subject to reduced rate limits, small delays, or other limits designed to protect the user experience.
 
+## Rate limits
+
+Order placement and cancellation are rate-limited per user. Two independent buckets, keyed on your username:
+
+| Endpoint | Limit |
+| --- | --- |
+| `POST /session/v2/place` | 25 requests per 5 seconds |
+| `POST /session/cancel` | 30 requests per 2 seconds |
+
+The cancel limit is intentionally higher than place — cancels close exposure, so they get more headroom than orders that open it.
+
+Read endpoints (markets, orderbook, your open orders, order lookup) do not have a published per-user rate limit, but please be reasonable.
+
+When you hit a limit you receive a `429` (or `423` if a `cancelAll` is in progress) with a `Retry-After` header and a `details.code` field you can branch on. The full retry strategy, error shapes, and a working `cancelWithRetry` example live on the [Rate limits](/pages/rate-limits) page.
+
 We are sharing this upfront in good faith so users can decide whether API integration makes sense for their use case. If you have any questions about this, please reach out via email at [hello@4cx.io](mailto:hello@4cx.io) or through Discord.
 
 Thank you for your consideration.

@@ -3,7 +3,7 @@ title: 'Log in'
 description: 'Exchange username and password for a session token.'
 ---
 
-Exchange your username and password for a session token. Paste the returned `user.auth` value into your client before calling other requests. This call does not send an `Authorization` header.
+Exchange your username and password for a session token. Copy the returned `data.user.auth` value and send it as the raw `Authorization` header on subsequent requests (no `Bearer` prefix). The response also sets a signed `auth` cookie, so browser clients are authenticated automatically on the same origin.
 
 ## Request
 
@@ -25,12 +25,44 @@ Exchange your username and password for a session token. Paste the returned `use
 {
   "data": {
     "user": {
+      "auth": "<128-byte hex token>",
+      "id": "65f1a2b3c4d5e6f7a8b9c0d1",
       "username": "sample_user",
-      "auth": "sample_auth_token_replace_with_real_value"
+      "isAdmin": false,
+      "type": "user",
+      "playerMode": "cash",
+      "cashBalance": 1000.00,
+      "coinsBalance": 0,
+      "cashLiability": 0,
+      "coinsLiability": 0,
+      "displayBalance": 1000.00,
+      "liability": 0,
+      "creditLimit": 0,
+      "defaultExpiry": 3600,
+      "defaultOffer": null,
+      "defaultRotationNumbers": false,
+      "displayRotationNumbers": false,
+      "oddsFormat": "american",
+      "sportsbookDefault": null,
+      "idVerified": false,
+      "emailConfirmation": false,
+      "rollover": 0,
+      "isPro": false,
+      "isAlphaUser": false,
+      "code": null,
+      "paynoteID": null,
+      "autoRedemptions": false,
+      "createdAt": "2024-03-13T12:00:00.000Z"
     }
   }
 }
 ```
 </CodeGroup>
 
-Use `data.user.auth` as the raw `Authorization` header value on subsequent requests (no `Bearer` prefix).
+The response also sets a signed cookie:
+
+```
+Set-Cookie: auth=<token>; HttpOnly; Path=/
+```
+
+For server-to-server clients, ignore the cookie and use `data.user.auth` as the raw `Authorization` header value on subsequent requests.

@@ -5,12 +5,28 @@ description: 'Real-time price and position feeds over Socket.IO.'
 
 # Streaming API (Socket.IO)
 
-**Documentation only.** Real-time feeds use **Socket.IO** over **WebSockets**, not the HTTP requests under `https://api.4cx.io` in the rest of this documentation.
+Real-time feeds use **Socket.IO over WebSockets**, on a different host from the REST API. The REST endpoints under `https://api.4cx.io` are not WebSocket endpoints.
 
-## Relationship to the REST API
+## Server
 
-- Use [Log in](/pages/authentication/log-in) to obtain a session token for REST.
-- Published streaming docs use **`wss://api.4cx.io/wssproduction`**. Confirm with your team whether your 4cx product reuses this host and token, or different endpoints.
+```
+wss://socket-api.4cx.io
+```
+
+## Authentication
+
+You authenticate the socket connection with the same REST session token returned by [Log in](/pages/authentication/log-in) (`data.user.auth`). Pass it on the handshake — either as a `query` parameter or as the `Authorization` header. **No `Bearer` prefix** — the raw token only.
+
+```js
+import { io } from 'socket.io-client'
+
+const socket = io('wss://socket-api.4cx.io/v2/user/<your-username>', {
+  query: { token: '<your-token>' },
+  transports: ['websocket']
+})
+```
+
+If the token is missing, invalid, or the account is closed, the handshake fails with `Error: not authorized`.
 
 ## Recommended Socket.IO clients
 
@@ -18,119 +34,189 @@ description: 'Real-time price and position feeds over Socket.IO.'
 - Java: [socket.io-client-java](https://github.com/socketio/socket.io-client-java)
 - C++: [socket.io-client-cpp](https://github.com/socketio/socket.io-client-cpp)
 
-## Server
+## Namespaces
 
-```
-wss://api.4cx.io/wssproduction
-```
+The server uses Socket.IO **namespaces** to separate feeds. Connect to a namespace by appending it to the host.
 
-## Authentication
+| Namespace | Purpose | Who emits |
+| --- | --- | --- |
+| `/v2/user/<username>` | Your own order events (posted, matched, cancelled, and your own takes). Designed for API clients. | The server, on `positionUpdate`. |
+| `/priceUpdates` | All public price/orderbook updates across all markets you subscribe to. | The server, on `orderUpdate` and `gameUpdate`. |
 
-A valid REST **token** (from `/user/login`, see [Authentication](/pages/authentication/log-in)) is required. Pass it in the subscription **query** object as described below.
+`<username>` must be the **username** of the account whose token you're using (not the email, not the ObjectId). The server enforces this — if the namespace username doesn't match the token owner, the handshake is rejected.
 
-## Public mode
+<Note>
+  All event payloads are **stringified JSON**. You must `JSON.parse` them in your handler. The server does this so the wire format is uniform across clients regardless of how their Socket.IO library serializes objects.
+</Note>
 
-Node.js clients should send `extraHeaders: { 'X-API-Version': 'public' }` on the handshake. Browser clients should pass `query: { apiVersion: 'public' }` so payloads use sweepstakes field names (`risk`, `take`, `requestID`) instead of legacy names.
+## `/priceUpdates` events
 
-## Subscriptions (channels)
+### `orderUpdate`
 
-### `SUB /`
+Emitted when a single side of a market changes — a new resting order, a fill, a cancel, or an edit. One emission per side that changed.
 
-Root channel subscription. **Query object:**
+**Outer payload** (after `JSON.parse`):
 
-- **`token`** (string, required) — auth token from the REST API.
+| Field | Type | Notes |
+| --- | --- | --- |
+| `gameID` | string | Market id. |
+| `sport`, `league` | string | Market metadata. |
+| `live` | boolean | `true` for in-play markets. |
+| `type` | string | One of `moneyline`, `spread`, `total`. |
+| `OU` | string | `"over"` / `"under"`. Present on `type: "total"`. |
+| `total` | number\|null | Total line, e.g. `8.5`. Present on `type: "total"`. |
+| `spread` | number\|null | Spread line. Present on `type: "spread"`. |
+| `participantID` | string\|null | The team/participant this side belongs to. Null on totals. |
+| `mainTotal` | number\|null | Current "main" total for the game (sent on total updates). |
+| `mainHomeSpread`, `mainAwaySpread` | number\|null | Current main spreads (sent on spread updates). |
+| `sideOrders` | array | Sorted resting depth on **just this side**. See schema below. |
 
-### `SUB /priceUpdates`
+**Each `sideOrders` entry**:
 
-Price feed. After subscribing, you receive messages of type **Order Update** or **Game Update** (see **Incoming messages**).
-
-### `SUB /v2/user/{username}`
-
-- **Path:** `username` = your 4Cx **username** (not email).
-- **Messages:** **Position Update** when your orders are placed, matched, or cancelled.
-
-## Incoming messages
-
-### 1. Order Update
-
-Emitted when a price changes in a single market (e.g. a new order on a line). Note: a future V2 may simplify updates to only the relevant order.
-
-**Payload fields include:** `gameID`, `type` (`moneyline` | `spread` | `total` | `moneyline1x2`), `sideOrders` (array), optional `spread`, `total`, `side`, `market`, and other properties.
-
-**Example:**
-
-```json
-{
-  "payload": {
-    "gameID": "62619dce25e2fb049a71cc2e",
-    "type": "total",
-    "OU": "under",
-    "total": 8.5,
-    "spread": null,
-    "sideOrders": [
-      {
-        "id": "62619e6a40e36d0494600f48",
-        "type": "total",
-        "createdBy": "603eb5d05eca45001243aedc",
-        "sumUntaken": 255,
-        "odds": 104,
-        "bet": 265.2,
-        "gameID": "62619dce25e2fb049a71cc2e",
-        "takenRatio": 0,
-        "participantID": null,
-        "total": 8.5,
-        "spread": null,
-        "OU": "under",
-        "followPinnacle": false,
-        "source": "4cx",
-        "level": 1,
-        "expiry": "2022-04-21T23:40:12.000Z",
-        "createdAt": "2022-04-21T18:11:54.614Z"
-      }
-    ]
-  }
-}
-```
-
-### 2. Game Update
-
-Emitted when a game is created, betting opens or closes, or the start time changes.
-
-**Payload** includes: `id`, `parentGameID`, `league`, `sport`, `start`, `ended`, `participants`, `awayMoneylines`, `homeMoneylines`, `awaySpreads`, `homeSpreads`, `over`, `under`, `mainHomeSpread`, `mainAwaySpread`, `mainTotal`, `messageType` (`marketOpen` | `marketClosed`), and other fields.
-
-A **full generated JSON example** is too large to duplicate here—ask your integration contact for a complete sample.
-
-### 3. Position Update
-
-Emitted when one of your orders is cancelled, matched, or placed.
-
-- **`matched`:** present when matched; includes `txID` (use REST matched-play lookup with the same `txID`), `filled`, `odds` (always in **your** odds; if you offered another user -105 you may see +105).
-- **`unmatched`:** `filled` (amount filled in this event, not cumulative across partials), `offered`, `remaining`, `orderID` (REST order lookup), `odds`. When `remaining` is 0 the order is fully matched; when `offered` is 0 the order was cancelled.
-- **Also:** `gameID`, `eventName`, `parentGameID`, `league`, `sport`, `origin` (`offer` | `wager`).
-
-**Example:**
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string | Order ObjectId. Cross-references the REST `orderID`. |
+| `type` | string | Same values as the outer `type`. |
+| `bet` | number | Original size of this offer (the risk that was posted). |
+| `sumUntaken` | number | Remaining offer size still available to be taken. |
+| `odds` | number | American odds **from the offerer's perspective**. |
+| `takenRatio` | number\|null | Fraction of the original offer that has been taken (0–1). `null` for non-4cx-sourced orders. |
+| `gameID` | string | Same as outer. |
+| `participantID` | string\|null | Same rules as the outer `participantID`. |
+| `total`, `spread`, `OU` | varies | Echo of the line this order belongs to. |
+| `expiry` | string\|null | ISO timestamp the order expires at, if it expires. |
+| `createdAt` | string | ISO timestamp the order was placed. |
+| `gameStartExpiry` | boolean\|null | Whether the order is set to expire at game start. |
+| `createdBy` | string | ObjectId of the order's owner. **Only present on orders you created** — stripped for everyone else's orders. |
 
 ```json
 {
-  "payload": {
-    "matched": null,
-    "unmatched": {
-      "filled": 0,
-      "offered": 999,
-      "remaining": 999,
-      "orderID": "62619e6b40e36d0494600f67",
-      "odds": -105
-    },
-    "gameID": "603eb5d05eca45001243aedc",
-    "eventName": "PHILADELPHIA-76ERS-VS-MIAMI-HEAT",
-    "parentGameID": null,
-    "league": "NBA",
-    "sport": "basketball",
-    "origin": "offer"
-  }
+  "gameID": "62619dce25e2fb049a71cc2e",
+  "sport": "basketball",
+  "league": "NBA",
+  "live": false,
+  "type": "total",
+  "OU": "under",
+  "total": 8.5,
+  "spread": null,
+  "participantID": null,
+  "mainTotal": 8.5,
+  "mainHomeSpread": null,
+  "mainAwaySpread": null,
+  "sideOrders": [
+    {
+      "id": "62619e6a40e36d0494600f48",
+      "type": "total",
+      "bet": 265.2,
+      "sumUntaken": 255,
+      "odds": 104,
+      "takenRatio": 0.038,
+      "gameID": "62619dce25e2fb049a71cc2e",
+      "participantID": null,
+      "total": 8.5,
+      "spread": null,
+      "OU": "under",
+      "expiry": "2022-04-21T23:40:12.000Z",
+      "createdAt": "2022-04-21T18:11:54.614Z",
+      "gameStartExpiry": null
+    }
+  ]
 }
+```
+
+### `gameUpdate`
+
+Emitted when a game is first published, its market opens or closes, the start time changes, or odds across the full game are republished (e.g. by a seeding job).
+
+Payload includes: `id`, `parentGameID`, `league`, `sport`, `start`, `ended`, `participants`, `awayMoneylines`, `homeMoneylines`, `awaySpreads`, `homeSpreads`, `over`, `under`, `mainHomeSpread`, `mainAwaySpread`, `mainTotal`, and `messageType` (`marketOpen` | `marketClosed`) when present.
+
+Full payloads are large; ask your integration contact for a sample if you need the exact field set for a given league.
+
+## `/v2/user/<username>` events
+
+This namespace emits exactly one event: **`positionUpdate`**. Every state change on one of your orders, and every fill that involves you (as offerer or taker), arrives as a `positionUpdate`.
+
+### Payload shape
+
+```json
+{
+  "matched": null,
+  "unmatched": {
+    "filled": 0,
+    "offered": 50,
+    "remaining": 50,
+    "orderID": "62619e6b40e36d0494600f67",
+    "odds": -110
+  },
+  "gameID": "603eb5d05eca45001243aedc",
+  "parentGameID": null,
+  "eventName": "PHILADELPHIA-76ERS-VS-MIAMI-HEAT",
+  "league": "NBA",
+  "sport": "basketball",
+  "live": false,
+  "start": "2024-03-13T23:30:00.000Z",
+  "awayRotationNumber": 501,
+  "origin": "offer",
+  "platform": "api",
+  "createdAt": "2024-03-13T22:11:54.614Z"
+}
+```
+
+Two payload objects do the heavy lifting:
+
+- **`unmatched`** — state of your **resting offer**. Fields: `orderID`, `odds`, `offered` (original size), `filled` (cumulative amount filled into this order), `remaining` (`offered - filled`). Present whenever your resting state changed.
+- **`matched`** — the **fill** that just occurred. Fields: `txID` (cross-reference with REST matched-play endpoints), `filled` (size of this specific fill), `odds` (always from **your** side — if you offered −105 you'll see −105 here even though the counterparty saw +105). Present whenever a fill involving you just happened.
+
+The `origin` field is a hint emitted by the server:
+- `origin: "offer"` — `unmatched` is present (your resting offer changed in some way).
+- `origin: "wager"` — only `matched` is present, no `unmatched` (you took someone else's resting liquidity).
+
+### How to tell what just happened
+
+Use the table below in your handler. All checks are on the parsed `positionUpdate` payload.
+
+| Event | Detection | Notes |
+| --- | --- | --- |
+| **You posted a new offer** | `origin === "offer"` AND `unmatched.filled === 0` AND `unmatched.remaining === unmatched.offered` AND `matched == null` | Your order is now resting on the book. |
+| **Someone partially took your offer** | `origin === "offer"` AND `unmatched.remaining > 0` AND `matched != null` | Use `matched.filled` for the size of this partial fill. The remainder is still resting — you'll get another `positionUpdate` when it fills or is cancelled. |
+| **Someone fully took your offer** | `origin === "offer"` AND `unmatched.remaining === 0` AND `matched != null` | The order is done. No further `positionUpdate` will arrive for this `orderID`. |
+| **You took someone else's offer** | `origin === "wager"` AND `matched != null` AND `unmatched == null` | This is the event you receive when you call `POST /session/v2/place` with `orderType !== "post"` and at least part of it crosses the book against another user's resting offer. |
+| **Your offer was cancelled** | `origin === "offer"` AND `unmatched.offered === 0` AND `matched == null` | Could be your own `cancel`/`cancelAll`, an expiry, or a system cancellation (e.g. liability rebalancing). Inspect the order's REST history if you need to know which. |
+
+### Example handler
+
+```js
+socket.on('positionUpdate', (raw) => {
+  const evt = JSON.parse(raw)
+  const { matched, unmatched, origin, orderID } = {
+    ...evt,
+    orderID: evt.unmatched?.orderID || evt.matched?.txID
+  }
+
+  if (origin === 'wager') {
+    console.log("You took someone else's offer:", matched.txID, matched.filled, '@', matched.odds)
+    return
+  }
+
+  if (unmatched?.offered === 0 && !matched) {
+    console.log('Cancelled:', unmatched.orderID)
+    return
+  }
+
+  if (matched && unmatched?.remaining === 0) {
+    console.log('Fully matched:', unmatched.orderID)
+    return
+  }
+
+  if (matched && unmatched?.remaining > 0) {
+    console.log('Partial fill:', matched.filled, 'of', unmatched.offered, 'remaining', unmatched.remaining)
+    return
+  }
+
+  console.log('Posted:', unmatched.orderID, '@', unmatched.odds, 'risk', unmatched.offered)
+})
 ```
 
 ## REST cross-reference
 
-Use the [Orders](/pages/orders/place-order) and related HTTP pages in this documentation when your deployment exposes the same routes for order lookup and matched plays.
+For looking up a `txID` (matched fills) or `orderID` (your resting state), see [Look up single order](/pages/orders/lookup-order). To list all of your current open offers in one call, use [List my open orders](/pages/orders/list-open-orders).

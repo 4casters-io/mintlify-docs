@@ -1,49 +1,80 @@
 ---
 title: 'Errors'
-description: 'Example error responses for common API failures.'
+description: 'How 4Cx API errors are structured and the common ones you should handle.'
 ---
 
-# Example error responses
+# Errors
 
-All errors return a JSON body with this envelope:
+Every error returned by the 4Cx API uses the same JSON envelope:
 
 ```json
 {
   "error": {
     "message": "Human-readable explanation.",
     "code": 400,
-    "details": { ... }   // present on some errors; see below
+    "details": {  }
   }
 }
 ```
 
-`message` is intended for humans. `code` mirrors the HTTP status. When `details` is present, it includes structured fields you can branch on in code (e.g. `details.code = "RATE_LIMITED"`).
+| Field | Meaning |
+| --- | --- |
+| `error.message` | Human-readable string. Safe to log; not safe to parse for branching. |
+| `error.code` | Mirrors the HTTP status code on the response. |
+| `error.details` | **Optional.** Present on errors that ship a structured payload — today, that's throttle and lockout errors (`429`, `423`). When present, `details.code` is a stable machine string you can branch on (e.g. `"RATE_LIMITED"`). Treat anything outside `details.code` as informational; the rest of the payload's shape can vary by error kind. |
 
-Older endpoints may still return a bare `{ "message": "..." }` body; check `error.message` first and fall back to the top-level `message`.
+When `details.retryAfterSeconds` is set, the response also includes a standard `Retry-After` header.
 
-## Order size exceeds limit (403)
+## Programming against errors
+
+1. Check the HTTP status first.
+2. If `error.details.code` is present, branch on that (it is stable across releases). The throttle codes documented on [Rate limits](/pages/rate-limits) are the main consumers of this.
+3. For everything else, the HTTP status + endpoint context is enough. Do **not** parse `error.message` — those strings are not part of the contract and may change.
+
+## Common errors by status
+
+### 400 — Bad request
+
+Validation failed on the request body or query string. Common triggers:
+
+- Missing required field (e.g. `Username and password are required` on `/user/login`).
+- Invalid `gameID` (`Invalid gameID: <id>` on any endpoint that looks up a game).
+- Invalid `playerMode` (must be `"coins"` or `"cash"` — see [Switch player mode](/pages/coins-only/switch-player-mode)).
+- Order size below `MIN_ORDER_SIZE` or above the configured maximum.
 
 ```json
 {
   "error": {
-    "message": "Order size exceeds maximum limit of 1000.00",
-    "code": 403
-  }
-}
-```
-
-## Invalid order identifier (400)
-
-```json
-{
-  "error": {
-    "message": "Invalid Order ID",
+    "message": "Invalid gameID: evt_001",
     "code": 400
   }
 }
 ```
 
-## Not your order (403)
+**What to do:** fix the request. 400s are never retried — they will fail the same way every time.
+
+### 401 — Unauthorized
+
+The token in `Authorization` (or the `auth` cookie) is missing, expired, or doesn't resolve to a user.
+
+```json
+{
+  "error": {
+    "message": "InvalidCredentials",
+    "code": 401
+  }
+}
+```
+
+**What to do:** re-authenticate via [Log in](/pages/authentication/log-in) and retry with the new `data.user.auth` token. Remember: the API takes the raw token — no `Bearer` prefix.
+
+### 403 — Forbidden
+
+You are authenticated but not allowed to act on this resource. Two common shapes:
+
+- **Resource ownership:** `Not your order: <orderID>` when you try to cancel or look up an order another user owns.
+- **Account restrictions:** `USER IS BANNED`, `Your account <username> has been closed`, or a permission flag (e.g. admin-only endpoints).
+- **Limits:** `Order size exceeds maximum limit of 1000.00` on place/edit.
 
 ```json
 {
@@ -54,12 +85,70 @@ Older endpoints may still return a bare `{ "message": "..." }` body; check `erro
 }
 ```
 
-## Throttle and lockout errors (423, 429)
+**What to do:** don't retry. If you believe the resource should be yours, double-check you logged in as the correct user.
 
-Place and cancel endpoints can return one of three distinct throttle conditions, each with its own `details.code`:
+### 404 — Not found
 
-- `RATE_LIMITED` (429) — per-second per-user limit exceeded
-- `CANCEL_QUEUE_FULL` (429) — cancel pipeline backed up (rare)
-- `CANCEL_ALL_IN_PROGRESS` (423) — a `cancelAll` is currently running for your account; do **not** simply retry like a normal rate limit
+The path is valid but the resource doesn't exist — e.g. you looked up an `orderID` or `depositRequestId` that was never created (or was deleted).
 
-Full descriptions, examples, and a recommended retry pattern are on the [Rate limits](/pages/rate-limits) page.
+```json
+{
+  "error": {
+    "message": "Redemption request not found.",
+    "code": 404
+  }
+}
+```
+
+### 409 — Conflict
+
+The request was well-formed and you're authorized, but the **state of the market changed** between when you read it and when you tried to act on it. This is the most common error class for any trading client and the one most worth handling explicitly.
+
+Common triggers on `POST /session/v2/place`:
+
+- `"Bet Size exceeds quantity available, which is $X.XX"` — the resting offer you tried to take was partially or fully consumed by another taker before your request landed.
+- `"Odds have been edited"` — the maker edited their order between your read and your take.
+- `"Session is expired"` / `"Session is cancelled"` — the order you targeted is no longer takeable.
+- `"Game is past start time"` / `"Game has started"` / `"Game has been taken OTB or is graded"` — the market closed (or moved to in-play) between your read and your write.
+- `"You cannot fill your own order: <orderID>"` — you are the maker of the order you tried to take. Only enforced in **cash** mode.
+- `"Order size exceeds available credit"` / `"Exceeds max liability <N>"` — your available credit / max liability changed (e.g. a concurrent order on the other side of your book).
+
+```json
+{
+  "error": {
+    "message": "Bet Size exceeds quantity available, which is $42.50",
+    "code": 409
+  }
+}
+```
+
+**What to do:** **re-read the orderbook before retrying.** A blind retry will almost always fail the same way. The correct pattern for a market-taking bot is:
+
+1. Catch the 409.
+2. Refresh the orderbook for the affected `gameID` (and orderbook depth on the side you wanted).
+3. Decide whether the new state still matches your strategy. If yes, place a new order against the current best offer; if no, abandon.
+
+Do **not** treat 409 as a generic rate-limit-style retry — backing off and resending the identical request is a common bot bug that just wastes your place-bucket budget.
+
+### 423 — Locked
+
+A `cancelAll`-style operation is currently running for your account, so individual cancels are temporarily locked out. This has structured `details` and should **not** be retried like a normal rate limit. See [Rate limits → CANCEL_ALL_IN_PROGRESS](/pages/rate-limits#cancel_all_in_progress-http-423).
+
+### 429 — Too many requests
+
+You exceeded the per-second rate limit on a place or cancel endpoint, or the cancel pipeline is saturated. Two distinct `details.code` values (`RATE_LIMITED`, `CANCEL_QUEUE_FULL`) — full retry strategy on [Rate limits](/pages/rate-limits).
+
+### 500 — Server error
+
+An unexpected failure on our side. The body is intentionally generic:
+
+```json
+{
+  "error": {
+    "message": "Something went wrong",
+    "code": 500
+  }
+}
+```
+
+**What to do:** retry with backoff. If you see sustained 500s on a specific endpoint, reach out at [hello@4cx.io](mailto:hello@4cx.io) with the approximate timestamp and your username.

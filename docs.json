@@ -24,7 +24,7 @@
           {
             "group": "Coins-only takes",
             "pages": [
-              "pages/coins-only/take-with-coins"
+              "pages/coins-only/switch-player-mode"
             ]
           },
           {
@@ -38,6 +38,12 @@
             "pages": [
               "pages/markets/list-events",
               "pages/markets/get-orderbook"
+            ]
+          },
+          {
+            "group": "Coins",
+            "pages": [
+              "pages/coins-only/place-coins-orders"
             ]
           },
           {

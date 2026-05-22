@@ -152,7 +152,6 @@ async function cancelWithRetry(sessionID, attempt = 0) {
     method: 'POST',
     headers: {
       'Authorization': token,
-      'X-API-Version': 'public',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ sessionID }),

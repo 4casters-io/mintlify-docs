@@ -10,7 +10,8 @@ This is the main **place** call: you send one or more **orders** to `/session/v2
 ## When `orderType` is `post`
 
 - Use `post` when you want your `risk` to **sit on the book** until another user matches you (or you cancel).
-- If you want to **immediately take** existing liquidity (coins flow), use [Take with coins](/pages/coins-only/take-with-coins) instead—same URL, different `orderType`.
+- If you want to **immediately take** existing liquidity, use the same endpoint with `orderType` set to anything other than `post` (e.g. `limit`).
+- Orders settle in coins or cash depending on your account's current player mode — see [Place coins orders](/pages/coins-only/place-coins-orders) and [Switch player mode](/pages/coins-only/switch-player-mode).
 
 ## Request body (field by field)
 
@@ -21,7 +22,7 @@ This is the main **place** call: you send one or more **orders** to `/session/v2
 | `gameID` | The game/market id—must exist in the system. |
 | `type` | `moneyline`, `spread`, `total`, etc. |
 | `odds` | American odds from **your** perspective (e.g. `-110`). |
-| `risk` | Amount you risk on this offer. With `X-API-Version: public` the API expects this field name. |
+| `risk` | Amount you risk on this offer. |
 | `side` | Which side you back—valid values depend on the game; `team_a` is only a placeholder. |
 
 ## Example response
@@ -38,7 +39,7 @@ Replace sample ids and `side` with values from your environment before expecting
   **POST** `https://api.4cx.io/session/v2/place` <Badge color="green">POST</Badge>
 </Card>
 
-**Headers:** `Authorization`, `X-API-Version: public`, `Content-Type: application/json`
+**Headers:** `Authorization`, `Content-Type: application/json`
 
 <CodeGroup>
 ```json Request
