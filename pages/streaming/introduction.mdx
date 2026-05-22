@@ -77,7 +77,7 @@ Emitted when a single side of a market changes — a new resting order, a fill, 
 | --- | --- | --- |
 | `id` | string | Order ObjectId. Cross-references the REST `orderID`. |
 | `type` | string | Same values as the outer `type`. |
-| `bet` | number | Original size of this offer (the risk that was posted). |
+| `risk` | number | Original size of this offer — the risk that was posted. |
 | `sumUntaken` | number | Remaining offer size still available to be taken. |
 | `odds` | number | American odds **from the offerer's perspective**. |
 | `takenRatio` | number\|null | Fraction of the original offer that has been taken (0–1). `null` for non-4cx-sourced orders. |
@@ -107,7 +107,7 @@ Emitted when a single side of a market changes — a new resting order, a fill, 
     {
       "id": "62619e6a40e36d0494600f48",
       "type": "total",
-      "bet": 265.2,
+      "risk": 265.2,
       "sumUntaken": 255,
       "odds": 104,
       "takenRatio": 0.038,
