@@ -6,7 +6,7 @@ description: 'Lists your unmatched open offers on the exchange.'
 Lists your unmatched open offers on the exchange. This is the 4cx route used by the product for open-order state (there is no `/session/getOrdersByUser` route in core-api).
 
 <Note>
-  **Open orders exist only in Sweepstakes mode.** Resting offers can only be placed in **Sweepstakes mode**. In **Gold Coins mode** (`playerMode: "coins"`) play is **take-only**, so there are no open orders and this list is **always empty**. If you expect resting offers but get an empty list, the most common cause is that your account is in Gold Coins mode — confirm `data.user.playerMode` from [Log in](/pages/authentication/log-in) or `/user/getMe`, and switch with [Switch player mode](/pages/coins-only/switch-player-mode) if needed.
+  **Open orders exist only in Sweepstakes mode.** If this list is empty unexpectedly, confirm your `data.user.playerMode` from [Log in](/pages/authentication/log-in) or `/user/getMe`, then review [Place coins orders](/pages/coins-only/place-coins-orders) and [Switch player mode](/pages/coins-only/switch-player-mode).
 </Note>
 
 <Note>
