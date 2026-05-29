@@ -33,11 +33,11 @@ When `details.retryAfterSeconds` is set, the response also includes a standard `
 
 ## Not an error: a `post` that would cross
 
-A maker-only `post` order on `POST /session/v2/place` that **would cross** the current market is **not** matched and **not** rested. There is no error for this — you receive **`HTTP 200`** with an **empty `matched` array and an empty `unmatched` object** (no `unmatched.orderID`).
+A maker-only `post` order on `POST /session/v2/place` that **would cross** the current market is **not** matched and **does not create an offer**. There is no error for this — you receive **`HTTP 200`** with an **empty `matched` array and an empty `unmatched` object** (no `unmatched.orderID`).
 
 This is the expected maker-only outcome (a `post` refuses to take liquidity), so there is no `4xx`/`5xx` to catch. Detect it on a `200` from place:
 
-- `matched` non-empty and/or `unmatched.orderID` present → your order took and/or rested.
+- `matched` non-empty and/or `unmatched.orderID` present → your order took and/or created an offer.
 - `matched` empty **and** `unmatched` empty (no `orderID`) → your `post` would have crossed and was dropped. Re-price so it does not cross, or resubmit as `limit` if you are willing to take the crossing liquidity. See [Place order → If your `post` would cross](/pages/orders/place-order#if-your-post-would-cross-the-book).
 
 ## Common errors by status
@@ -115,7 +115,7 @@ The request was well-formed and you're authorized, but the **state of the market
 
 Common triggers on `POST /session/v2/place`:
 
-- `"Order size exceeds quantity available, which is $X.XX"` — the resting offer you tried to take was partially or fully consumed by another taker before your request landed.
+- `"Order size exceeds quantity available, which is $X.XX"` — the open offer you tried to take was partially or fully consumed by another taker before your request landed.
 - `"Odds have been edited"` — the maker edited their order between your read and your take.
 - `"Session is expired"` / `"Session is cancelled"` — the order you targeted is no longer takeable.
 - `"Game is past start time"` / `"Game has started"` / `"Game has been taken OTB or is graded"` — the market closed (or moved to in-play) between your read and your write.

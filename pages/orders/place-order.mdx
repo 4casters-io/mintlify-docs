@@ -1,11 +1,11 @@
 ---
 title: 'Place order'
-description: 'Place resting offers or matched takes via /session/v2/place.'
+description: 'Create offers or matched takes via /session/v2/place.'
 ---
 
 ## What you are doing
 
-This is the main **place** call: you send one or more **orders** to `/session/v2/place`. The sample body shows the usual case—**resting a new offer** on the board.
+This is the main **place** call: you send one or more **orders** to `/session/v2/place`. The sample body shows the usual case—**creating a new offer** on the board.
 
 <Note>
   For mode-specific behavior, see [Place coins orders](/pages/coins-only/place-coins-orders) and [Switch player mode](/pages/coins-only/switch-player-mode).
@@ -13,26 +13,26 @@ This is the main **place** call: you send one or more **orders** to `/session/v2
 
 ## Order types
 
-`orderType` controls whether your order takes existing liquidity, rests on the book, or both:
+`orderType` controls whether your order takes existing liquidity, creates an offer on the book, or both:
 
 | `orderType` | Behavior |
 | --- | --- |
-| `post` | **Maker-only.** Rests on the book — but **only if it would not cross** the current market. If it *would* match existing liquidity, it is **rejected and nothing rests** (see [If your `post` would cross](#if-your-post-would-cross-the-book) below). `post` never takes. |
-| `limit` | **Take-then-rest.** Matches whatever liquidity it crosses right now, then rests any unfilled remainder on the book. This is the type to use if you want to join or take the current market and still leave a working offer. |
-| `fillOrKill` | Match in full immediately or reject the whole order. Never rests. |
-| `fillAndKill` | Match whatever crosses immediately, discard the remainder. Never rests. |
+| `post` | **Maker-only.** Creates an offer on the book — but **only if it would not cross** the current market. If it *would* match existing liquidity, it is **rejected and no offer is created** (see [If your `post` would cross](#if-your-post-would-cross-the-book) below). `post` never takes. |
+| `limit` | **Take-then-offer.** Matches whatever liquidity it crosses right now, then creates an offer with any unfilled remainder. This is the type to use if you want to join or take the current market and still leave a working offer. |
+| `fillOrKill` | Match in full immediately or reject the whole order. Never creates an offer. |
+| `fillAndKill` | Match whatever crosses immediately, discard the remainder. Never creates an offer. |
 
 <Warning>
-  `post` is **not** "the resting type" and `limit` is **not** "the taking type." Both can rest; the difference is that `post` refuses to take (it is dropped if it would cross), while `limit` takes what it can and rests the rest. If you want your offer to rest regardless of whether it crosses, use `limit`.
+  `post` is **not** "the offer type" and `limit` is **not** "the taking type." Both can create offers; the difference is that `post` refuses to take (it is dropped if it would cross), while `limit` takes what it can and can create an offer with the remainder. If you want to create an offer even when some liquidity is immediately takeable, use `limit`.
 </Warning>
 
 ## If your `post` would cross the book
 
-A `post` order only rests when its price does **not** cross the best available price on the other side. If it would cross, the API does **not** match it and does **not** rest it — instead you get **`HTTP 200` with an empty `matched` array and an empty `unmatched` object** (no `unmatched.orderID`). This is the expected maker-only outcome, not an error, so there is no `4xx` to catch.
+A `post` order only creates an offer when its price does **not** cross the best available price on the other side. If it would cross, the API does **not** match it and does **not** create an offer — instead you get **`HTTP 200` with an empty `matched` array and an empty `unmatched` object** (no `unmatched.orderID`). This is the expected maker-only outcome, not an error, so there is no `4xx` to catch.
 
-There is **no probability/odds cap** here. American odds are valid for any magnitude between `100` and `100000` on either side (e.g. `-110`, `+250`, `-900` are all fine). Whether a `post` rests depends entirely on whether its price crosses the book — not on whether the odds are above or below even money.
+There is **no probability/odds cap** here. American odds are valid for any magnitude between `100` and `100000` on either side (e.g. `-110`, `+250`, `-900` are all fine). Whether a `post` creates an offer depends entirely on whether its price crosses the book — not on whether the odds are above or below even money.
 
-**To rest on the favorite (negative-odds) side:** submit your real side and odds (e.g. `side: "yes"`, `odds: -900` for a ~90¢ bid) and price it so it does **not** cross the best opposing offer, or use `limit` if you are willing to take the crossing liquidity. The side you submit is always your real exposure — submitting the opposite outcome at the inverse price is the *opposite* bet, not an equivalent one.
+**To create an offer on the favorite (negative-odds) side:** submit your real side and odds (e.g. `side: "yes"`, `odds: -900` for a ~90c bid) and price it so it does **not** cross the best opposing offer, or use `limit` if you are willing to take crossing liquidity first. The side you submit is always your real exposure — submitting the opposite outcome at the inverse price is the *opposite* bet, not an equivalent one.
 
 **To detect a dropped `post`:** treat an empty `matched` **and** empty `unmatched` (no `orderID`) as "post-only rejected, would have crossed."
 
@@ -55,7 +55,7 @@ There is **no probability/odds cap** here. American odds are valid for any magni
 - `unmatched` — what is still live: use `orderID` with **Cancel order** / **Look up single order**; `offered` / `remaining` show how much risk is still working.
 
 <Note>
-  The example below shows a `post` that **rested** — i.e. its `-110` price did **not** cross the book in that market. The same request in a market where `-110` crosses the best opposing offer would instead return empty `matched` and `unmatched` with no `orderID`. Always check for `unmatched.orderID` to confirm your offer is actually working.
+  The example below shows a `post` that **created an offer** — i.e. its `-110` price did **not** cross the book in that market. The same request in a market where `-110` crosses the best opposing offer would instead return empty `matched` and `unmatched` with no `orderID`. Always check for `unmatched.orderID` to confirm your offer is actually working.
 </Note>
 
 Replace sample ids and `side` with values from your environment before expecting a real fill.

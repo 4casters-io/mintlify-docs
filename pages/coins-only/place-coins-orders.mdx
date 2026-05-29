@@ -13,7 +13,7 @@ There is no separate endpoint for coins orders. You use the same [Place order](/
 </Note>
 
 <Warning>
-  **Gold Coins mode is take-only.** In `coins` mode you can only **take** existing liquidity — you cannot rest an offer on the book. `orderType: "post"` will not rest, and [List my open orders](/pages/orders/list-open-orders) is always empty. Resting offers (and therefore open orders) are a **Sweepstakes-mode** feature. To rest liquidity, switch to Sweepstakes mode first.
+  **Gold Coins mode is take-only.** In `coins` mode you can only **take** existing liquidity — you cannot create offers on the book. `orderType: "post"` will not create an offer, and [List my open orders](/pages/orders/list-open-orders) is always empty. Creating offers (and therefore open orders) is a **Sweepstakes-mode** feature. To create offers, switch to Sweepstakes mode first.
 </Warning>
 
 There is no per-request flag that overrides this — the mode is a single per-account setting. To trade in the other currency, switch the mode **before** placing the order.
@@ -28,8 +28,8 @@ You can confirm the current mode at any time by inspecting `data.user.playerMode
 
 Once your mode is set, follow the standard order flow:
 
-- [Place order](/pages/orders/place-order) — in **Sweepstakes mode**, both `post` and `limit` can leave a resting offer (`post` rests only; `limit` takes first, then rests any remainder). In **Gold Coins mode**, resting is unavailable.
+- [Place order](/pages/orders/place-order) — in **Sweepstakes mode**, both `post` and `limit` can create an offer (`post` creates only; `limit` takes first, then can create an offer with any remainder). In **Gold Coins mode**, offer creation is unavailable.
 - [Cancel order](/pages/orders/cancel-order) — cancel a single open order.
-- [List my open orders](/pages/orders/list-open-orders) — your unmatched resting offers.
+- [List my open orders](/pages/orders/list-open-orders) — your unmatched open offers.
 
-Switching modes does **not** auto-cancel orders that are already resting in the previous mode; only newly placed orders are affected.
+Switching modes does **not** auto-cancel orders that are already open in the previous mode; only newly placed orders are affected.
