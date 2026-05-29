@@ -6,10 +6,6 @@ description: 'Lists your unmatched open offers on the exchange.'
 Lists your unmatched open offers on the exchange. This is the 4cx route used by the product for open-order state (there is no `/session/getOrdersByUser` route in core-api).
 
 <Note>
-  **Open orders exist only in Sweepstakes mode.** If this list is empty unexpectedly, confirm your `data.user.playerMode` from [Log in](/pages/authentication/log-in) or `/user/getMe`, then review [Place coins orders](/pages/coins-only/place-coins-orders) and [Switch player mode](/pages/coins-only/switch-player-mode).
-</Note>
-
-<Note>
   Results are **scoped to your current player mode** and the list reflects only offers that are still working (not matched, cancelled, expired, or graded).
 </Note>
 

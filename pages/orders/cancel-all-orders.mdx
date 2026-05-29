@@ -5,10 +5,6 @@ description: 'Cancel every open order on your account in one request.'
 
 Cancels **every** open order on your account across all games. Use this for an account-wide flatten (e.g. a kill switch) rather than enumerating ids yourself.
 
-<Note>
-  Open orders only exist in **Sweepstakes mode**. See [Place coins orders](/pages/coins-only/place-coins-orders) for mode behavior.
-</Note>
-
 <Warning>
   While a `cancelAll`-style operation is running for your account, individual [Cancel order](/pages/orders/cancel-order) calls are temporarily locked out and return **`HTTP 423`** with `details.code = "CANCEL_ALL_IN_PROGRESS"`. Do not retry those like a normal rate limit — wait for the cancel-all to finish. See [Errors → 423](/pages/errors#423-locked).
 </Warning>
