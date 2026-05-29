@@ -48,7 +48,7 @@ Validation failed on the request body or query string. Common triggers:
 
 - Missing required field (e.g. `Username and password are required` on `/user/login`).
 - Invalid `gameID` (`Invalid gameID: <id>` on any endpoint that looks up a game).
-- Invalid `playerMode` (must be `"coins"` or `"cash"` — see [Switch player mode](/pages/coins-only/switch-player-mode)).
+- Invalid `playerMode` (must be one of the two supported mode values — see [Switch player mode](/pages/coins-only/switch-player-mode)).
 - Order size below `MIN_ORDER_SIZE` or above the configured maximum.
 
 ```json
@@ -119,7 +119,7 @@ Common triggers on `POST /session/v2/place`:
 - `"Odds have been edited"` — the maker edited their order between your read and your take.
 - `"Session is expired"` / `"Session is cancelled"` — the order you targeted is no longer takeable.
 - `"Game is past start time"` / `"Game has started"` / `"Game has been taken OTB or is graded"` — the market closed (or moved to in-play) between your read and your write.
-- `"You cannot fill your own order: <orderID>"` — you are the maker of the order you tried to take. Only enforced in **cash** mode.
+- `"You cannot fill your own order: <orderID>"` — you are the maker of the order you tried to take. Only enforced in **4C cash** mode.
 - `"Order size exceeds available credit"` / `"Exceeds max liability <N>"` — your available credit / max liability changed (e.g. a concurrent order on the other side of your book).
 
 ```json

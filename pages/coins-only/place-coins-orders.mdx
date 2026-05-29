@@ -1,6 +1,6 @@
 ---
 title: 'Place coins orders'
-description: 'How your account mode determines whether orders are denominated in coins or cash.'
+description: 'How your account mode determines whether orders are denominated in Gold Coins or 4C cash.'
 ---
 
 # Place coins orders
@@ -9,18 +9,18 @@ There is no separate endpoint for coins orders. You use the same [Place order](/
 
 <Note>
   - When your account is in **Gold Coins mode** (`coins`), every order you place is denominated in **Gold Coins**.
-  - When your account is in **Sweepstakes mode** (`cash`), every order you place is denominated in **cash**.
+  - When your account is in **Sweepstakes mode**, every order you place is denominated in **4C cash**.
 </Note>
 
 <Warning>
-  **Gold Coins mode is take-only.** In `coins` mode you can only **take** existing liquidity — you cannot rest an offer on the book. `orderType: "post"` will not rest, and [List my open orders](/pages/orders/list-open-orders) is always empty. Resting offers (and therefore open orders) are a **Sweepstakes-mode** (`cash`) feature. To rest liquidity, switch to Sweepstakes mode first.
+  **Gold Coins mode is take-only.** In `coins` mode you can only **take** existing liquidity — you cannot rest an offer on the book. `orderType: "post"` will not rest, and [List my open orders](/pages/orders/list-open-orders) is always empty. Resting offers (and therefore open orders) are a **Sweepstakes-mode** feature. To rest liquidity, switch to Sweepstakes mode first.
 </Warning>
 
 There is no per-request flag that overrides this — the mode is a single per-account setting. To trade in the other currency, switch the mode **before** placing the order.
 
 ## How to switch
 
-Call [Switch player mode](/pages/coins-only/switch-player-mode) with `{ "playerMode": "coins" }` or `{ "playerMode": "cash" }`.
+Call [Switch player mode](/pages/coins-only/switch-player-mode) with `{ "playerMode": "coins" }` or the Sweepstakes-mode value shown on that page.
 
 You can confirm the current mode at any time by inspecting `data.user.playerMode` from the [Log in](/pages/authentication/log-in) response, or via `/user/getMe`.
 

@@ -1,11 +1,11 @@
 ---
 title: 'Switch player mode'
-description: 'Toggle your account between cash and coins (Gold Coins) mode.'
+description: 'Toggle your account between 4C cash and Gold Coins modes.'
 ---
 
 Each 4Cx account has a single active **player mode** at a time:
 
-- **`cash`** — orders settle against your cash balance and liability.
+- **`cash`** — this API value means **4C cash (Sweepstakes mode)**. Orders settle against your 4C cash balance and liability.
 - **`coins`** — orders settle in Gold Coins. See [Place coins orders](/pages/coins-only/place-coins-orders) for the full denomination rule.
 
 The current mode is returned as `data.user.playerMode` on [Log in](/pages/authentication/log-in) and on `/user/getMe`. Call this endpoint to flip it before placing an order in the other mode.
@@ -24,7 +24,7 @@ The current mode is returned as `data.user.playerMode` on [Log in](/pages/authen
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `playerMode` | string | Must be exactly `"coins"` or `"cash"`. Any other value returns `400`. |
+| `playerMode` | string | Must be exactly `"coins"` or the 4C cash mode value shown above. Any other value returns `400`. |
 
 <CodeGroup>
 ```json Request
@@ -53,12 +53,12 @@ curl -X POST https://api.4cx.io/user/updateCoinsOrCash \
 
 | Status | Message | Cause |
 | --- | --- | --- |
-| `400` | `Error! Invalid method of play` | `playerMode` was not `"coins"` or `"cash"`. |
+| `400` | `Error! Invalid method of play` | `playerMode` was not one of the two supported mode values. |
 | `401` | `InvalidCredentials` | Missing or invalid `Authorization` token. |
 
 ## Typical flow
 
 1. Log in and inspect `data.user.playerMode` from the response.
-2. If you want to take in coins and the user is in `cash`, `POST /user/updateCoinsOrCash` with `{ "playerMode": "coins" }`.
+2. If you want to take in coins and the user is currently in 4C cash mode, `POST /user/updateCoinsOrCash` with `{ "playerMode": "coins" }`.
 3. Proceed to [Place order](/pages/orders/place-order). See [Place coins orders](/pages/coins-only/place-coins-orders) for the denomination rule.
-4. To return to cash trading, repeat with `{ "playerMode": "cash" }`.
+4. To return to 4C cash trading, repeat with the 4C cash mode value shown above.
