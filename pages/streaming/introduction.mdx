@@ -53,7 +53,7 @@ The server uses Socket.IO **namespaces** to separate feeds. Connect to a namespa
 
 ### `orderUpdate`
 
-Emitted when a single side of a market changes — a new resting order, a fill, a cancel, or an edit. One emission per side that changed.
+Emitted when a single side of a market changes — a new open offer, a fill, a cancel, or an edit. One emission per side that changed.
 
 **Outer payload** (after `JSON.parse`):
 
@@ -69,7 +69,7 @@ Emitted when a single side of a market changes — a new resting order, a fill, 
 | `participantID` | string\|null | The team/participant this side belongs to. Null on totals. |
 | `mainTotal` | number\|null | Current "main" total for the game (sent on total updates). |
 | `mainHomeSpread`, `mainAwaySpread` | number\|null | Current main spreads (sent on spread updates). |
-| `sideOrders` | array | Sorted resting depth on **just this side**. See schema below. |
+| `sideOrders` | array | Sorted open-offer depth on **just this side**. See schema below. |
 
 **Each `sideOrders` entry**:
 
@@ -134,7 +134,7 @@ Full payloads are large; ask your integration contact for a sample if you need t
 
 ## `/v2/user/<username>` events
 
-This namespace emits exactly one event: **`positionUpdate`**. Every state change on one of your orders, and every fill that involves you (as offerer or taker), arrives as a `positionUpdate`.
+This namespace emits exactly one event: **`positionUpdate`**. Every state change on one of your orders, and every fill that involves you (as offer creator or taker), arrives as a `positionUpdate`.
 
 ### Payload shape
 
@@ -164,12 +164,12 @@ This namespace emits exactly one event: **`positionUpdate`**. Every state change
 
 Two payload objects do the heavy lifting:
 
-- **`unmatched`** — state of your **resting offer**. Fields: `orderID`, `odds`, `offered` (original size), `filled` (cumulative amount filled into this order), `remaining` (`offered - filled`). Present whenever your resting state changed.
+- **`unmatched`** — state of your **open offer**. Fields: `orderID`, `odds`, `offered` (original size), `filled` (cumulative amount filled into this order), `remaining` (`offered - filled`). Present whenever your open-offer state changed.
 - **`matched`** — the **fill** that just occurred. Fields: `txID` (cross-reference with REST matched-play endpoints), `filled` (size of this specific fill), `odds` (always from **your** side — if you offered −105 you'll see −105 here even though the counterparty saw +105). Present whenever a fill involving you just happened.
 
 The `origin` field is a hint emitted by the server:
-- `origin: "offer"` — `unmatched` is present (your resting offer changed in some way).
-- `origin: "wager"` — only `matched` is present, no `unmatched` (you took someone else's resting liquidity).
+- `origin: "offer"` — `unmatched` is present (your open offer changed in some way).
+- `origin: "wager"` — only `matched` is present, no `unmatched` (you took someone else's open offer).
 
 ### How to tell what just happened
 
@@ -177,10 +177,10 @@ Use the table below in your handler. All checks are on the parsed `positionUpdat
 
 | Event | Detection | Notes |
 | --- | --- | --- |
-| **You posted a new offer** | `origin === "offer"` AND `unmatched.filled === 0` AND `unmatched.remaining === unmatched.offered` AND `matched == null` | Your order is now resting on the book. |
-| **Someone partially took your offer** | `origin === "offer"` AND `unmatched.remaining > 0` AND `matched != null` | Use `matched.filled` for the size of this partial fill. The remainder is still resting — you'll get another `positionUpdate` when it fills or is cancelled. |
+| **You created a new offer** | `origin === "offer"` AND `unmatched.filled === 0` AND `unmatched.remaining === unmatched.offered` AND `matched == null` | Your order is now open on the book. |
+| **Someone partially took your offer** | `origin === "offer"` AND `unmatched.remaining > 0` AND `matched != null` | Use `matched.filled` for the size of this partial fill. The remainder is still open — you'll get another `positionUpdate` when it fills or is cancelled. |
 | **Someone fully took your offer** | `origin === "offer"` AND `unmatched.remaining === 0` AND `matched != null` | The order is done. No further `positionUpdate` will arrive for this `orderID`. |
-| **You took someone else's offer** | `origin === "wager"` AND `matched != null` AND `unmatched == null` | This is the event you receive when you call `POST /session/v2/place` with `orderType !== "post"` and at least part of it crosses the book against another user's resting offer. |
+| **You took someone else's offer** | `origin === "wager"` AND `matched != null` AND `unmatched == null` | This is the event you receive when you call `POST /session/v2/place` with `orderType !== "post"` and at least part of it crosses the book against another user's open offer. |
 | **Your offer was cancelled** | `origin === "offer"` AND `unmatched.offered === 0` AND `matched == null` | Could be your own `cancel`/`cancelAll`, an expiry, or a system cancellation (e.g. liability rebalancing). Inspect the order's REST history if you need to know which. |
 
 ### Example handler
@@ -213,10 +213,10 @@ socket.on('positionUpdate', (raw) => {
     return
   }
 
-  console.log('Posted:', unmatched.orderID, '@', unmatched.odds, 'risk', unmatched.offered)
+  console.log('Created offer:', unmatched.orderID, '@', unmatched.odds, 'risk', unmatched.offered)
 })
 ```
 
 ## REST cross-reference
 
-For looking up a `txID` (matched fills) or `orderID` (your resting state), see [Look up single order](/pages/orders/lookup-order). To list all of your current open offers in one call, use [List my open orders](/pages/orders/list-open-orders).
+For looking up a `txID` (matched fills) or `orderID` (your open-offer state), see [Look up single order](/pages/orders/lookup-order). To list all of your current open offers in one call, use [List my open orders](/pages/orders/list-open-orders).
