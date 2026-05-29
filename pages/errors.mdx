@@ -31,6 +31,15 @@ When `details.retryAfterSeconds` is set, the response also includes a standard `
 2. If `error.details.code` is present, branch on that (it is stable across releases). The throttle codes documented on [Rate limits](/pages/rate-limits) are the main consumers of this.
 3. For everything else, the HTTP status + endpoint context is enough. Do **not** parse `error.message` — those strings are not part of the contract and may change.
 
+## Not an error: a `post` that would cross
+
+A maker-only `post` order on `POST /session/v2/place` that **would cross** the current market is **not** matched and **does not create an offer**. There is no error for this — you receive **`HTTP 200`** with an **empty `matched` array and an empty `unmatched` object** (no `unmatched.orderID`).
+
+This is the expected maker-only outcome (a `post` refuses to take liquidity), so there is no `4xx`/`5xx` to catch. Detect it on a `200` from place:
+
+- `matched` non-empty and/or `unmatched.orderID` present → your order took and/or created an offer.
+- `matched` empty **and** `unmatched` empty (no `orderID`) → your `post` would have crossed and was dropped. Re-price so it does not cross, or resubmit as `limit` if you are willing to take the crossing liquidity. See [Place order → If your `post` would cross](/pages/orders/place-order#if-your-post-would-cross-the-book).
+
 ## Common errors by status
 
 ### 400 — Bad request
@@ -39,7 +48,7 @@ Validation failed on the request body or query string. Common triggers:
 
 - Missing required field (e.g. `Username and password are required` on `/user/login`).
 - Invalid `gameID` (`Invalid gameID: <id>` on any endpoint that looks up a game).
-- Invalid `playerMode` (must be `"coins"` or `"cash"` — see [Switch player mode](/pages/coins-only/switch-player-mode)).
+- Invalid `playerMode` (must be one of the two supported mode values — see [Switch player mode](/pages/coins-only/switch-player-mode)).
 - Order size below `MIN_ORDER_SIZE` or above the configured maximum.
 
 ```json
@@ -106,11 +115,11 @@ The request was well-formed and you're authorized, but the **state of the market
 
 Common triggers on `POST /session/v2/place`:
 
-- `"Order size exceeds quantity available, which is $X.XX"` — the resting offer you tried to take was partially or fully consumed by another taker before your request landed.
+- `"Order size exceeds quantity available, which is $X.XX"` — the open offer you tried to take was partially or fully consumed by another taker before your request landed.
 - `"Odds have been edited"` — the maker edited their order between your read and your take.
 - `"Session is expired"` / `"Session is cancelled"` — the order you targeted is no longer takeable.
 - `"Game is past start time"` / `"Game has started"` / `"Game has been taken OTB or is graded"` — the market closed (or moved to in-play) between your read and your write.
-- `"You cannot fill your own order: <orderID>"` — you are the maker of the order you tried to take. Only enforced in **cash** mode.
+- `"You cannot fill your own order: <orderID>"` — you are the maker of the order you tried to take. Only enforced in **4C cash** mode.
 - `"Order size exceeds available credit"` / `"Exceeds max liability <N>"` — your available credit / max liability changed (e.g. a concurrent order on the other side of your book).
 
 ```json

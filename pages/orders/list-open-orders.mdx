@@ -5,6 +5,10 @@ description: 'Lists your unmatched open offers on the exchange.'
 
 Lists your unmatched open offers on the exchange. This is the 4cx route used by the product for open-order state (there is no `/session/getOrdersByUser` route in core-api).
 
+<Note>
+  Results are **scoped to your current player mode** and the list reflects only offers that are still working (not matched, cancelled, expired, or graded).
+</Note>
+
 ## Request
 
 <Card>

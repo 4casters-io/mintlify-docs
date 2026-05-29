@@ -1,0 +1,58 @@
+---
+title: 'Cancel multiple orders'
+description: 'Cancel a batch of your open orders in one request.'
+---
+
+Cancels a batch of open orders you own in a single request. This is the recommended way to cancel several specific orders at once — prefer it over firing many single [Cancel order](/pages/orders/cancel-order) calls, which burn through your cancel rate-limit bucket faster.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/session/cancelMultiple` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `Content-Type: application/json`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sessionIDs` | string[] | Array of order (session) ids to cancel. Must be an array; each id must be a valid order id or the whole request fails with `400`. |
+
+<CodeGroup>
+```json Request
+{
+  "sessionIDs": [
+    "507f1f77bcf86cd799439011",
+    "507f1f77bcf86cd799439012"
+  ]
+}
+```
+
+```json Response
+{
+  "data": [
+    {
+      "success": true,
+      "sessionID": "507f1f77bcf86cd799439011",
+      "odds": -110,
+      "filled": 0,
+      "offered": 50,
+      "remaining": 50,
+      "gameID": "evt_001"
+    },
+    {
+      "success": true,
+      "sessionID": "507f1f77bcf86cd799439012",
+      "odds": 120,
+      "filled": 10,
+      "offered": 50,
+      "remaining": 40,
+      "gameID": "evt_001"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+`data` is an **array of per-order results**, one entry per id you submitted. Each entry mirrors the [Cancel order](/pages/orders/cancel-order) result shape; check `success` per entry, since some ids may have already been matched, cancelled, or expired.
+
+See [Errors](/pages/errors) for common failure responses and [Rate limits](/pages/rate-limits) for the cancel bucket.

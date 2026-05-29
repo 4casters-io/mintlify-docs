@@ -1,0 +1,42 @@
+---
+title: 'Cancel all orders'
+description: 'Cancel every open order on your account in one request.'
+---
+
+Cancels **every** open order on your account across all games. Use this for an account-wide flatten (e.g. a kill switch) rather than enumerating ids yourself.
+
+<Warning>
+  While a `cancelAll`-style operation is running for your account, individual [Cancel order](/pages/orders/cancel-order) calls are temporarily locked out and return **`HTTP 423`** with `details.code = "CANCEL_ALL_IN_PROGRESS"`. Do not retry those like a normal rate limit — wait for the cancel-all to finish. See [Errors → 423](/pages/errors#423-locked).
+</Warning>
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/session/cancelAllOrders` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `Content-Type: application/json`
+
+No request body is required.
+
+<CodeGroup>
+```json Response
+{
+  "data": [
+    {
+      "success": true,
+      "sessionID": "507f1f77bcf86cd799439011",
+      "odds": -110,
+      "filled": 0,
+      "offered": 50,
+      "remaining": 50,
+      "gameID": "evt_001"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+`data` is an **array of per-order results**, one entry per order that was open when the request ran. Each entry mirrors the [Cancel order](/pages/orders/cancel-order) result shape; check `success` per entry. An empty array means you had no open orders.
+
+See [Errors](/pages/errors) for failure responses and [Rate limits](/pages/rate-limits) for the cancel bucket and the `CANCEL_ALL_IN_PROGRESS` lockout.
