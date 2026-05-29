@@ -31,6 +31,15 @@ When `details.retryAfterSeconds` is set, the response also includes a standard `
 2. If `error.details.code` is present, branch on that (it is stable across releases). The throttle codes documented on [Rate limits](/pages/rate-limits) are the main consumers of this.
 3. For everything else, the HTTP status + endpoint context is enough. Do **not** parse `error.message` — those strings are not part of the contract and may change.
 
+## Not an error: a `post` that would cross
+
+A maker-only `post` order on `POST /session/v2/place` that **would cross** the current market is **not** matched and **not** rested. There is no error for this — you receive **`HTTP 200`** with an **empty `matched` array and an empty `unmatched` object** (no `unmatched.orderID`).
+
+This is the expected maker-only outcome (a `post` refuses to take liquidity), so there is no `4xx`/`5xx` to catch. Detect it on a `200` from place:
+
+- `matched` non-empty and/or `unmatched.orderID` present → your order took and/or rested.
+- `matched` empty **and** `unmatched` empty (no `orderID`) → your `post` would have crossed and was dropped. Re-price so it does not cross, or resubmit as `limit` if you are willing to take the crossing liquidity. See [Place order → If your `post` would cross](/pages/orders/place-order#if-your-post-would-cross-the-book).
+
 ## Common errors by status
 
 ### 400 — Bad request

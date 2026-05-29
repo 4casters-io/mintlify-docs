@@ -51,6 +51,8 @@
             "pages": [
               "pages/orders/place-order",
               "pages/orders/cancel-order",
+              "pages/orders/cancel-multiple",
+              "pages/orders/cancel-all-orders",
               "pages/orders/list-open-orders",
               "pages/orders/lookup-order"
             ]
