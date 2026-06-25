@@ -36,8 +36,9 @@
           {
             "group": "Markets / Exchange",
             "pages": [
-              "pages/markets/list-events",
-              "pages/markets/get-orderbook"
+              "pages/markets/get-active-game-ids",
+              "pages/markets/get-orderbook",
+              "pages/markets/list-events"
             ]
           },
           {
