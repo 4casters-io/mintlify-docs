@@ -1,0 +1,68 @@
+---
+title: 'Get active game IDs'
+description: 'List the active games in a league and read their ids for the orderbook calls.'
+---
+
+Returns the active (not-yet-ended) games for a league, each with the `id` you pass as `gameID` to [Get orderbook](/pages/markets/get-orderbook). This is the lightweight list endpoint — it returns game identity and matchup metadata only, without orderbook depth.
+
+Use [List events](/pages/markets/list-events) first if you want to narrow to a specific event name.
+
+## Request
+
+<Card>
+  **POST** `https://api.4cx.io/exchange/v2/getGames` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `Content-Type: application/json`
+
+`league` is required. `sport` is optional and further narrows the result.
+
+<CodeGroup>
+```json Request
+{
+  "league": "NBA",
+  "sport": "basketball"
+}
+```
+
+```json Response
+{
+  "data": {
+    "games": [
+      {
+        "id": "65f1a2b3c4d5e6f7a8b9c0d1",
+        "eventName": "Team A vs Team B",
+        "tournamentName": null,
+        "periodName": "Full Game",
+        "league": "NBA",
+        "sport": "basketball",
+        "start": "2026-06-26T23:00:00.000Z",
+        "live": false,
+        "ended": false,
+        "featured": false,
+        "isSpecials": false,
+        "parentGameID": null,
+        "participants": [
+          {
+            "id": "65f1a2b3c4d5e6f7a8b9c0a1",
+            "longName": "Team A",
+            "shortName": "TA",
+            "homeAway": "away",
+            "rotationNumber": 501
+          },
+          {
+            "id": "65f1a2b3c4d5e6f7a8b9c0a2",
+            "longName": "Team B",
+            "shortName": "TB",
+            "homeAway": "home",
+            "rotationNumber": 502
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+</CodeGroup>
+
+Take any `data.games[].id` and pass it as `gameID` to [Get orderbook → By single game id](/pages/markets/get-orderbook).

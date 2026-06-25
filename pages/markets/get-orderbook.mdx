@@ -1,11 +1,16 @@
 ---
 title: 'Get orderbook'
-description: 'Returns depth for the selected game.'
+description: 'Read live depth for a whole league or for a single game id.'
 ---
 
-Replace `evt_001` with a real game id from your environment. Returns depth for the selected game.
+There are two ways to read depth:
 
-## Request
+- **By league** — `POST /exchange/getOrderbook` returns every active game in a league, each with its full orderbook. Good for rendering a board.
+- **By single game id** — `POST /exchange/getSingleOrderbook` returns depth for one game (plus its child and prop markets). Good once you have a specific `gameID`.
+
+Get the `gameID` values from [Get active game IDs](/pages/markets/get-active-game-ids) (or from the `id` on any game in the league response below).
+
+## By league
 
 <Card>
   **POST** `https://api.4cx.io/exchange/getOrderbook` <Badge color="green">POST</Badge>
@@ -13,23 +18,79 @@ Replace `evt_001` with a real game id from your environment. Returns depth for t
 
 **Headers:** `Authorization`, `Content-Type: application/json`
 
+`leagueRequested` is required. `sportRequested` is optional. `sortBy` is optional (e.g. `matchedVolume`, `openInterest`).
+
 <CodeGroup>
 ```json Request
 {
-  "gameID": "evt_001"
+  "leagueRequested": "NBA",
+  "sportRequested": "basketball"
 }
 ```
 
 ```json Response
 {
   "data": {
-    "game": {
-      "id": "evt_001",
-      "eventName": "Team A vs Team B",
-      "league": "NBA",
-      "sport": "basketball"
+    "market": null,
+    "games": [
+      {
+        "id": "65f1a2b3c4d5e6f7a8b9c0d1",
+        "eventName": "Team A vs Team B",
+        "league": "NBA",
+        "sport": "basketball",
+        "start": "2026-06-26T23:00:00.000Z"
+      }
+    ],
+    "orderSummary": [],
+    "pagination": {
+      "totalDocs": 1,
+      "limit": 1,
+      "page": 1,
+      "totalPages": 1,
+      "hasPrevPage": false,
+      "hasNextPage": false
     }
   }
 }
 ```
 </CodeGroup>
+
+Each entry in `data.games` carries live depth alongside the identity fields shown above; read `data.games[].id` to drill into a single game.
+
+## By single game id
+
+<Card>
+  **POST** `https://api.4cx.io/exchange/getSingleOrderbook` <Badge color="green">POST</Badge>
+</Card>
+
+**Headers:** `Authorization`, `Content-Type: application/json`
+
+`gameID` is required — a `400` is returned if it is missing.
+
+<CodeGroup>
+```json Request
+{
+  "gameID": "65f1a2b3c4d5e6f7a8b9c0d1"
+}
+```
+
+```json Response
+{
+  "data": {
+    "market": null,
+    "game": {
+      "id": "65f1a2b3c4d5e6f7a8b9c0d1",
+      "eventName": "Team A vs Team B",
+      "league": "NBA",
+      "sport": "basketball",
+      "matchedVolume": 0
+    },
+    "orderSummary": [],
+    "childGames": [],
+    "propGames": []
+  }
+}
+```
+</CodeGroup>
+
+`childGames` holds related sub-markets (e.g. period markets) and `propGames` holds player props tied to this game. For a futures game, `market` is populated with the market name instead of `null`.

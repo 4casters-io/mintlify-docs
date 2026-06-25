@@ -1,9 +1,11 @@
 ---
 title: 'List events'
-description: 'Returns event names you can use to narrow the schedule.'
+description: 'Returns the distinct event names for a sport, to narrow the schedule.'
 ---
 
-Returns event names you can use to narrow the schedule. Adjust `sport` to match your market.
+Returns the distinct `eventName` values for a sport's upcoming games, so you can offer an event filter. This returns **event name strings only** — to get game `id` values for the orderbook, use [Get active game IDs](/pages/markets/get-active-game-ids).
+
+Only games starting within the next **30 days** (from now) are considered. The list is the deduplicated set of those games' event names; when at least one is found, the sentinel `"all"` is prepended so you can offer an "all events" choice.
 
 ## Request
 
@@ -12,6 +14,8 @@ Returns event names you can use to narrow the schedule. Adjust `sport` to match 
 </Card>
 
 **Headers:** `Authorization`, `Content-Type: application/json`
+
+`sport` is required.
 
 <CodeGroup>
 ```json Request
@@ -32,3 +36,8 @@ Returns event names you can use to narrow the schedule. Adjust `sport` to match 
 }
 ```
 </CodeGroup>
+
+**Notes**
+
+- `availableEvents` is empty (`[]`) when there are no upcoming games for the sport in the 30-day window — in that case `"all"` is **not** included.
+- `sport: "fighting"` always returns an empty `availableEvents` array; events are not surfaced for that sport.
