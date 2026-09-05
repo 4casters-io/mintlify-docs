@@ -22,6 +22,12 @@
             ]
           },
           {
+            "group": "Deep links",
+            "pages": [
+              "pages/deep-links"
+            ]
+          },
+          {
             "group": "Coins-only takes",
             "pages": [
               "pages/coins-only/switch-player-mode"
