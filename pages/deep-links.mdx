@@ -1,0 +1,71 @@
+---
+title: 'Deep links'
+description: 'Send a player straight to one market with the take window already open.'
+---
+
+A deep link opens 4Cx on the game, market and side you choose, with the take window already up. Add a referral code and the player who signs up after following it is credited to you.
+
+```
+https://4cx.io/?game={gameID}&market=spread&side=away&line=3.5&ref=YOUR_CODE
+```
+
+## Building a link
+
+Start from a `gameID` — the same id you pass to [Get orderbook](/pages/markets/get-orderbook), which you can list with [Get active game IDs](/pages/markets/get-active-game-ids). Then name the market you want opened.
+
+<ParamField query="game" type="string" required>
+  The game id (24-character hex).
+</ParamField>
+<ParamField query="market" type="string" required>
+  `moneyline`, `spread`, or `total`. `ml` is accepted as shorthand for moneyline.
+</ParamField>
+<ParamField query="side" type="string" required>
+  `home` or `away` for moneyline and spread. `over` or `under` for totals.
+</ParamField>
+<ParamField query="line" type="number">
+  The spread or total number, written from the chosen side's point of view. Away +3.5 is `side=away&line=3.5`; home -3.5 is `side=home&line=-3.5`. Omit it to open the main line.
+</ParamField>
+<ParamField query="ref" type="string">
+  Your referral code — the same one used in `/sign-up/{code}` links.
+</ParamField>
+
+<Note>
+  Game ids are per platform. A 4casters game id does not exist on 4Cx, so build 4Cx links from 4Cx game ids only.
+</Note>
+
+## Examples
+
+<CodeGroup>
+```text Away moneyline
+https://4cx.io/?game=6a70cb6648a3d38f0839bbf3&market=moneyline&side=away&ref=YOUR_CODE
+```
+
+```text Home -2.5
+https://4cx.io/?game=6a70cb6648a3d38f0839bbf3&market=spread&side=home&line=-2.5&ref=YOUR_CODE
+```
+
+```text Main-line total, under
+https://4cx.io/?game=6a70cb6648a3d38f0839bbf3&market=total&side=under&ref=YOUR_CODE
+```
+</CodeGroup>
+
+## What the player sees
+
+A signed-in player lands on the home page with the take window open on that side, showing the best price resting there and the rest of the ladder.
+
+A signed-out visitor is taken to log in first, then lands on the market with the window open — 4Cx requires an account to see the board. If they create an account instead, your referral code is already filled in on the signup form.
+
+The window opens in whichever mode the account is set to, Gold Coins or Sweepstakes. It does not switch modes on the player's behalf; see [Switch player mode](/pages/coins-only/switch-player-mode).
+
+## Prices are live, not baked into the link
+
+A link names a market, never a specific order. Orders rest and are cancelled constantly, so the price a player sees is read from the book when the page opens and may differ from the one you saw when you built the link. The player confirms the price themselves before anything is placed.
+
+If nobody is offering that side when they arrive, the window switches to creating an offer at that line instead of taking one — the same thing that happens when you click an empty cell on the board.
+
+## Notes
+
+- **Games go live.** When a game starts, its pre-match market closes and a separate live market opens. A pre-match link followed after the start uses the live market's book. If the game started and has no live market, the link opens 4Cx with no window rather than showing a market that can no longer be traded.
+- **Unknown lines.** If the line in the link is not one the game has (or `line` is omitted and no main line is published yet), 4Cx opens with no window. The player is never moved onto a different line silently.
+- **Referral credit is first-touch.** The first code a browser arrives with is kept until that visitor signs up. Someone who already has an account is not re-credited.
+- **Three-way markets, props and player markets** are not addressable with these parameters.
